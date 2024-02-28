@@ -246,6 +246,64 @@
 (printout t crlf "Este es un alimento " ?p " porque es un tipo de " ?x crlf)
 )
 
+(defrule es_alimento
+(nivel_piramide_alimentaria ?a ?x)
+=>
+(assert (es_alimento ?a si))
+)
+;¿Lo que es de la piramide alimenticia es un alimento, o solo los que son tipos de esos?, es decir, ¿la lista de alimentos incluiria a la carne, el pescado, etc, o solo a los que son tipos de esos?
+
+(defrule heredar_alimento
+(es_un_tipo_de ?a ?x)
+(es_alimento ?x si)
+=>
+(assert (es_alimento ?a si))
+)
+
+(defrule listar_alimentos
+(declare (salience 3))
+(es_alimento ?a si)
+=>
+(printout t crlf ?a)
+)
+
+(defrule herencia_nivel
+(es_un_tipo_de ?a ?x)
+(nivel_piramide_alimentaria ?x ?n)
+=>
+(assert (nivel_piramide_alimentaria ?a ?n))
+)
+;Ya está solo habria que ver si heredamos nivel o no y ya
+(defrule alimento_parecido
+(alimento ?a)
+(es_alimento ?x si)
+(nivel_piramide_alimentaria ?x ?n)
+(nivel_piramide_alimentaria ?a ?n)
+=>
+(assert (alimento_parecido ?a ?x))
+)
+;En caso de que la pregunta anterior sea afirmativa, los alimentos parecidos entre si cambiarian xd
+
+(defrule indicar_alimento_parecido
+(declare (salience -2))
+(alimento_parecido ?a ?x)
+=>
+(printout t "Tambien podrias probar con " ?x crlf)
+)
+
+(defrule retractar_alimento_parecido
+(declare (salience 2))
+(alimento_parecido ?a ?x)
+?d <- (alimento_parecido ?a ?x)
+(propiedad ?p ?a ?v)
+(not (propiedad ?p ?x ?v))
+(propiedad ?p1 ?x ?v1)
+(not (propiedad ?p1 ?a ?v1))
+=>
+(retract ?d)
+)
+;esto está retractando con lo que me indican o me faltaría algo?
+
 ;;;;;; EJERCICIO PARTE 1:  AÑADIR REGLAS PARA LISTAR LOS ALIMENTOS DE LOS QUE SE DISPONE DE INFORMACION ANTES DE PREGUNTAR
 ;;; Indicaciones: 1) deduce hechos (es_alimento ?x) representando que algo es un alimento a partir de la relacion "es_un_tipo_de"
 ;;;               2) Imprime por pantalla los es_alimento
