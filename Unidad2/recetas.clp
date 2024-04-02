@@ -105,6 +105,9 @@
 (gluten (nombre pan_rallado))
 (gluten (nombre pan_de_pueblo))
 (gluten (nombre pan_de_pita))
+(gluten (nombre espaguetis))
+(gluten (nombre macarrones))
+(gluten (nombre pasta))
 )
 
 (deffacts condimentos

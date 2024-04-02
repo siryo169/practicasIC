@@ -6,18 +6,17 @@
 (defmodule PedirInformacion (export deftemplate respuesta))
 
 (defrule preguntar_veggie
-?f1 <- (respuesta 0)
+(respuesta 0)
 =>
 (printout t crlf "Buenas! Voy a recomendarte un plato para cocinar, para empezar veamos las particularidades alimentarias, ¿deseas que la receta sea vegetariana o vegana? (las opciones son: "vegetariana", "vegana" o "no")" crlf)
 (assert (respuesta (read)))
 (focus ObtenerRecetas)
-(retract ?f1)
 )
 
 (defrule preguntar_gluten
 (respuesta 1 | 2 | 3)
 =>
-(printout t crlf "entiendo, ¿y deseas que el alimento sea sin gluten? (las opciones son: "si" o "no"" crlf)
+(printout t crlf "entiendo, ¿y deseas que el alimento sea sin gluten? (las opciones son: "si" o "no")" crlf)
 (assert (respuesta (read)))
 (focus ObtenerRecetas)
 )
@@ -25,7 +24,7 @@
 (defrule preguntarlactosa
 (respuesta 4-1 | 4-2 | 4-3 | 5-1 | 5-2 | 5-3)
 =>
-(printout t crlf "apuntado, ¿y deseas que el alimento sea sin lactosa? (las opciones son: "si" o "no"" crlf)
+(printout t crlf "apuntado, ¿y deseas que el alimento sea sin lactosa? (las opciones son: "si" o "no")" crlf)
 (assert (respuesta (read)))
 (focus ObtenerRecetas)
 )
@@ -148,6 +147,9 @@
 (gluten (nombre pan_rallado))
 (gluten (nombre pan_de_pueblo))
 (gluten (nombre pan_de_pita))
+(gluten (nombre espaguetis))
+(gluten (nombre macarrones))
+(gluten (nombre pasta))
 )
 
 (deffacts condimentos
@@ -616,9 +618,11 @@
 (defrule vegetariano_terminado
     (declare (salience -10))
     ?f1 <- (respuesta vegetariana)
+    ?f2 <- (respuesta 0)
     (not (respuesta 1))
     =>
     (retract ?f1)
+    (retract ?f2)
     (assert (respuesta 1))
 )
 
@@ -633,14 +637,17 @@
 (defrule vegano_terminado
     (declare (salience -10))
     ?f1 <- (respuesta vegana)
+    ?f2 <- (respuesta 0)
     (not (respuesta 2))
     =>
     (retract ?f1)
+    (retract ?f2)
     (assert (respuesta 2))
 )
 
 (defrule usuario_no_veggie
     (respuesta no)
+    (respuesta 0)
     (receta (nombre ?nombre)(enlace ?enlace))
     =>
     (assert (posible_receta (enlaces ?enlace)))
@@ -649,9 +656,11 @@
 (defrule no_vegetariano_terminado
     (declare (salience -10))
     ?f1 <- (respuesta no)
+    ?f2 <- (respuesta 0)
     (not (respuesta 3))
     =>
     (retract ?f1)
+    (retract ?f2)
     (assert (respuesta 3))
 )
 
@@ -664,10 +673,8 @@
 )
 
 (defrule gluten_vege_terminado
-    (declare (salience -10))
     ?f1 <- (respuesta no)
     ?f2 <- (respuesta 1)
-    (not (respuesta 5-1))
     =>
     (retract ?f1)
     (retract ?f2)
@@ -678,7 +685,6 @@
     (declare (salience -10))
     ?f1 <- (respuesta no)
     ?f2 <- (respuesta 2)
-    (not (respuesta 5-2))
     =>
     (retract ?f1)
     (retract ?f2)
@@ -689,7 +695,6 @@
     (declare (salience -10))
     ?f1 <- (respuesta no)
     ?f2 <- (respuesta 3)
-    (not (respuesta 5-3))
     =>
     (retract ?f1)
     (retract ?f2)
@@ -711,7 +716,6 @@
     (declare (salience -10))
     ?f1 <- (respuesta sin_gluten)
     ?f2 <- (respuesta 1)
-    (not (respuesta 4-1))
     =>
     (retract ?f1)
     (retract ?f2)
@@ -769,7 +773,7 @@
     (retract ?f1)
 )
 
-(defrule sin_lactosa__sin_gluten_vege_terminado
+(defrule sin_lactosa_sin_gluten_vege_terminado
     (declare (salience -10))
     ?f1 <- (respuesta sin_lactosa)
     ?f2 <- (respuesta 4-1)
@@ -780,7 +784,7 @@
     (assert (respuesta 10))
 )
 
-(defrule sin_lactosa__sin_gluten_vega_terminado
+(defrule sin_lactosa_sin_gluten_vega_terminado
     (declare (salience -10))
     ?f1 <- (respuesta sin_lactosa)
     ?f2 <- (respuesta 4-2)
@@ -791,7 +795,7 @@
     (assert (respuesta 10))
 )
 
-(defrule sin_lactosa__sin_gluten_terminado
+(defrule sin_lactosa_sin_gluten_terminado
     (declare (salience -10))
     ?f1 <- (respuesta sin_lactosa)
     ?f2 <- (respuesta 4-3)
@@ -836,8 +840,20 @@
 
 )
 
-;;;;NO HACE FALTA PROPIEDADES PUEDO PONER DESPUES SEGUN EL CAMINO ELEGIDO
+
+(defrule proponer 
+ (respuesta 10)
+ =>
+ (focus ProponerReceta)
+)
 
 
+(defmodule ProponerReceta (import DeducirPropiedades deftemplate receta posible_receta)(import PedirInformacion deftemplate respuesta))
 
-(defmodule ProponerReceta)
+(defrule proponer_receta
+    (posible_receta (enlaces ?enlace))
+    =>
+    (printout t "Puede que te interese esta receta: " (length$ (find-all-facts ((?f posible_receta)) TRUE)) crlf)
+    (printout t "Puede que te interese esta receta: " ?enlace crlf)
+)
+;;AÑADIR SI QUIERE ALGO MÁS TIPO PICANTE O DE dieta
