@@ -848,12 +848,449 @@
 )
 
 
-(defmodule ProponerReceta (import DeducirPropiedades deftemplate receta posible_receta)(import PedirInformacion deftemplate respuesta))
+(defmodule ProponerReceta (import DeducirPropiedades deftemplate receta posible_receta propiedad_receta)(import PedirInformacion deftemplate respuesta))
 
-(defrule proponer_receta
-    (posible_receta (enlaces ?enlace))
-    =>
-    (printout t "Puede que te interese esta receta: " (length$ (find-all-facts ((?f posible_receta)) TRUE)) crlf)
-    (printout t "Puede que te interese esta receta: " ?enlace crlf)
+(deftemplate posibles_picantes
+  (slot enlace)
 )
-;;AÑADIR SI QUIERE ALGO MÁS TIPO PICANTE O DE dieta
+
+(deftemplate posibles_dieta
+  (slot enlace)
+)
+
+(defrule encontrar_picante
+    (propiedad_receta (propiedad es_picante) (receta ?nombre))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    (posible_receta (enlaces ?enlace))
+    ?d2 <- (respuesta 10)
+    =>
+    (assert (posibles_picantes (enlace ?nombre)))
+    (retract ?d2)
+    (assert (respuesta 11))
+)
+
+(defrule cantidad_picante
+    (declare (salience 10))
+    ?d1 <- (respuesta 11)
+    (test (>= (- (length$ (find-all-facts ((?f posible_receta)) TRUE))
+               (length$ (find-all-facts ((?f posibles_picantes)) TRUE))) 1))
+    (test (>= (length$ (find-all-facts ((?f posibles_picantes)) TRUE)) 1))
+    =>
+    (retract ?d1)
+    (assert (respuesta 12))
+)
+
+(defrule encontrar_dieta
+  (declare (salience 2))
+  ?d1 <- (respuesta 11)
+  (posible_receta (enlaces ?enlace))
+  (propiedad_receta (propiedad es_de_dieta) (receta ?nombre))
+  (receta (nombre ?nombre)(enlace ?enlace))
+  =>
+  (assert (posibles_dieta (enlace ?enlace)))
+  (retract ?d1)
+  (assert (respuesta 23))
+)
+
+(defrule encontrar_dieta_10
+  (declare (salience 2))
+  ?d1 <- (respuesta 10)
+  (posible_receta (enlaces ?enlace))
+  (propiedad_receta (propiedad es_de_dieta) (receta ?nombre))
+  (receta (nombre ?nombre)(enlace ?enlace))
+  =>
+  (assert (posibles_dieta (enlace ?enlace)))
+  (retract ?d1)
+  (assert (respuesta 23))
+)
+
+(defrule cantidad_dieta
+    (declare (salience 10))
+    ?d1 <- (respuesta 23)
+    (test (>= (- (length$ (find-all-facts ((?f posible_receta)) TRUE))
+               (length$ (find-all-facts ((?f posibles_dieta)) TRUE))) 1))
+    (test (>= (length$ (find-all-facts ((?f posibles_dieta)) TRUE)) 1))
+    =>
+    (assert (respuesta 24))
+    (retract ?d1)
+)
+
+(defrule separar_dieta
+    (declare (salience 9))
+    (respuesta 24)
+    ?d1 <- (posible_receta (enlaces ?enlace))
+    (posibles_dieta (enlace ?enlace))
+    =>
+    (retract ?d1)
+)
+
+(defrule separar_picantes
+  (declare (salience 9))
+  (respuesta 12)
+  ?d1 <- (posible_receta (enlaces ?enlace))
+  (posibles_picantes (enlace ?enlace))
+  =>
+  (retract ?d1)
+)
+
+(defrule preguntar_picante
+    (declare (salience 8))
+    (respuesta 12)
+    (posibles_picantes (enlace ?enlace))
+    =>
+    (printout t "¿Te gustaría que la receta fuese picante? (si | no)" crlf)
+    (assert (respuesta (read)))
+)
+
+(defrule picante_si
+    ?d2 <- (respuesta si)
+    ?d1 <- (respuesta 12)
+    =>
+    (assert (respuesta 13))
+    (retract ?d1)
+    (retract ?d2)
+)
+
+(defrule picante_no
+    ?d2 <- (respuesta no)
+    ?d1 <- (respuesta 12)
+    =>
+    (assert (respuesta 14))
+    (retract ?d1)
+    (retract ?d2)
+)
+
+(defrule encontrar_dieta_picante
+    ?d1 <- (respuesta 13)
+    (receta (nombre ?nombre)(enlace ?enlace))
+    (posibles_picantes (enlace ?enlace))
+    (propiedad_receta (propiedad es_de_dieta) (receta ?nombre))
+    =>
+    (retract ?d1)
+    (assert (respuesta 15))
+    (assert (posibles_dieta (enlace ?enlace)))
+)
+
+(defrule cantidad_dieta_picante
+    (declare (salience 10))
+    ?d1 <- (respuesta 15)
+    (test (>= (- (length$ (find-all-facts ((?f posibles_picantes)) TRUE))
+               (length$ (find-all-facts ((?f posibles_dieta)) TRUE))) 1))
+    (test (>= (length$ (find-all-facts ((?f posibles_dieta)) TRUE)) 1))
+    =>
+    (assert (respuesta 16))
+    (retract ?d1)
+)
+
+(defrule separar_picante_dieta
+    (declare (salience 9))
+    (respuesta 16)
+    ?d1 <- (posibles_picantes (enlace ?enlace))
+    (posibles_dieta (enlace ?enlace))
+    =>
+    (retract ?d1)
+)
+
+(defrule preguntar_dieta
+    (declare (salience 8))
+    (respuesta 16|18|24)
+    (posibles_dieta (enlace ?enlace))
+    =>
+    (printout t "¿Te gustaría que la receta fuese de dieta? (si | no)" crlf)
+    (assert (respuesta (read)))
+)
+
+(defrule encontrar_dieta_no_picante
+    ?d1 <- (respuesta 14)
+    (receta (nombre ?nombre)(enlace ?enlace))
+    (posible_receta (enlaces ?enlace))
+    (propiedad_receta (propiedad es_de_dieta) (receta ?nombre))
+    =>
+    (retract ?d1)
+    (assert (posibles_dieta (enlace ?enlace)))
+    (assert (respuesta 17))
+)
+
+(defrule cantidad_dieta_no_picante
+    (declare (salience 10))
+    ?d1 <- (respuesta 17)
+    (test (>= (- (length$ (find-all-facts ((?f posible_receta)) TRUE))
+               (length$ (find-all-facts ((?f posibles_dieta)) TRUE))) 1))
+    (test (>= (length$ (find-all-facts ((?f posibles_dieta)) TRUE)) 1))
+    =>
+    (assert (respuesta 18))
+    (retract ?d1)
+)
+
+(defrule separar_no_picante_dieta
+    (declare (salience 9))
+    (respuesta 18)
+    ?d1 <- (posible_receta (enlaces ?enlace))
+    (posibles_dieta (enlace ?enlace))
+    =>
+    (retract ?d1)
+)
+
+(defrule picante_dieta_si
+    (declare (salience 9))
+    ?d1 <- (respuesta 16)
+    ?d2 <- (respuesta si)
+    =>
+    (retract ?d1)
+    (retract ?d2)
+    (assert (respuesta 19))
+)
+
+(defrule no_picante_dieta_si
+    (declare (salience 9))
+    ?d1 <- (respuesta 18)
+    ?d2 <- (respuesta si)
+    =>
+    (retract ?d1)
+    (retract ?d2)
+    (assert (respuesta 20))
+)
+
+(defrule picante_dieta_no
+    (declare (salience 9))
+    ?d1 <- (respuesta 16)
+    ?d2 <- (respuesta no)
+    =>
+    (retract ?d1)
+    (retract ?d2)
+    (assert (respuesta 21))
+) 
+
+(defrule no_picante_dieta_no
+    (declare (salience 9))
+    ?d1 <- (respuesta 18)
+    ?d2 <- (respuesta no)
+    =>
+    (retract ?d1)
+    (retract ?d2)
+    (assert (respuesta 22))
+)
+
+(defrule dieta_si 
+    ?d1 <- (respuesta 24)
+    ?d2 <- (respuesta si)
+    =>
+    (assert (respuesta 25))
+    (retract ?d1)
+    (retract ?d2)
+)
+
+(defrule dieta_no
+    ?d1 <- (respuesta 24)
+    ?d2 <- (respuesta no)
+    =>
+    (assert (respuesta 26))
+    (retract ?d1)
+    (retract ?d2)
+)
+
+(defrule proponer_sin_lactosa
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-5-3)
+    =>
+    (printout t "Como quieres una receta sin lactosa, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_lactosa_vegano
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-5-2)
+    =>
+    (printout t "Como quieres una receta sin lactosa y vegana, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_lactosa_vegetariano
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-5-1)
+    =>
+    (printout t "Como quieres una receta sin lactosa y vegetariana, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_lactosa_sin_gluten
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-4-3)
+    =>
+    (printout t "Como quieres una receta sin lactosa y sin gluten, " )
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_lactosa_sin_gluten_vegano
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-4-2)
+    =>
+    (printout t "Como quieres una receta sin lactosa, sin gluten y vegana, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_lactosa_sin_gluten_vegetariano
+    (declare (salience -100))
+    ?d1 <- (respuesta 6-4-1)
+    =>
+    (printout t "Como quieres una receta sin lactosa, sin gluten y vegetariana, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_gluten_vegetariano
+    (declare (salience -100))
+    ?d1 <- (respuesta 4-1)
+    =>
+    (printout t "Como quieres una receta sin gluten y vegetariana, " )
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_gluten_vegano
+    (declare (salience -100))
+    ?d1 <- (respuesta 4-2)
+    =>
+    (printout t "Como quieres una receta sin gluten y vegana, " )
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_sin_gluten
+    (declare (salience -100))
+    ?d1 <- (respuesta 4-3)
+    =>
+    (printout t "Como quieres una receta sin gluten, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_vegetariano
+    (declare (salience -100))
+    ?d1 <- (respuesta 5-1)
+    =>
+    (printout t "Como quieres una receta vegetariana, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_vegano
+    (declare (salience -100))
+    ?d1 <- (respuesta 5-2)
+    =>
+    (printout t "Como quieres una receta vegana, " )
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer
+    (declare (salience -100))
+    ?d1 <- (respuesta 10)
+    =>
+    (printout t "Como quieres una receta, ")
+    (retract ?d1)
+    (assert (respuesta 50))
+)
+
+(defrule proponer_picante_dieta
+    (declare (salience -100))
+    (respuesta 19)
+    (posibles_dieta (enlace ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " picante y de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_no_picante_dieta
+    (declare (salience -100))
+    (respuesta 20)
+    (posibles_dieta (enlace ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " no picante y de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_picante_no_dieta
+    (declare (salience -100))
+    (respuesta 21)
+    (posibles_picantes (enlace ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " picante y no de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_no_picante_no_dieta
+    (declare (salience -100))
+    (respuesta 22)
+    (posible_receta (enlaces ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " no picante y no de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_picante 
+    (declare (salience -100))
+    (respuesta 13|15)
+    (posibles_picantes (enlace ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " picante, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_no_picante
+    (declare (salience -100))
+    (respuesta 14|17)
+    (posible_receta (enlaces ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " no picante, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_dieta
+    (declare (salience -100))
+    (respuesta 25)
+    (posibles_dieta (enlace ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_no_dieta
+    (declare (salience -100))
+    (respuesta 26)
+    (posible_receta (enlaces ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    ?d1 <- (respuesta 50)
+    =>
+    (printout t " no de dieta, te recomiendo " ?nombre crlf)
+    (retract ?d1)
+)
+
+(defrule proponer_terminar
+    (declare (salience -100))
+    ?d1 <- (respuesta 50)
+    (respuesta 10|23)
+    (posible_receta (enlaces ?enlace))
+    (receta (nombre ?nombre)(enlace ?enlace))
+    =>
+    (printout t " te recomiendo " ?nombre crlf)
+)
